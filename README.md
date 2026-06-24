@@ -4,7 +4,7 @@
 **Student:** Anand Patil  
 **Issue:** [Feature Request: Implement missing ops from backends
  #14909](https://github.com/ggml-org/llama.cpp/issues/14909)  
-**Status:** Phase II Complete
+**Status:** Phase III Partially Complete
 
 ---
 
@@ -131,36 +131,54 @@ Using UMPIRE framework (adapted):
 
 ### Unit Tests
 
-- [ ] Test case 1: [Description]
-- [ ] Test case 2: [Description]
-- [ ] Test case 3: [Description]
+- [ ] Test case 1: avg pooling with kernel=2, stride=2, padding=0 on a simple F32 input tensor
+- [ ] Test case 2: max pooling with kernel=3, stride=1, padding=1 to verify boundary clamping
+- [ ] Test case 3: avg pooling with padding > 0 to verify padded regions do not affect the average
 
 ### Integration Tests
 
-- [ ] Integration scenario 1
-- [ ] Integration scenario 2
+- [ ] Run test-backend-ops with `-b Vulkan -o POOL_1D` and confirm all cases match CPU reference output
+- [ ] Run llama-bench before and after to confirm no performance regression on existing ops
 
 ### Manual Testing
 
-[What you tested manually and results]
+In Progress. Will complete by next week.
 
 ---
 
 ## Implementation Notes
 
-### Week [X] Progress
+### Week 3 Progress (June 15-23)
+**What I built:**
+- Added `vk_op_pool1d_push_constants` struct in `ggml-vulkan.cpp`
+- Added `pipeline_pool1d_f32` field to `vk_device_struct` in `ggml-vulkan.cpp`
+- Created `pool1d.comp` shader in `ggml/src/ggml-vulkan/vulkan-shaders/`:
+  - Removed height dimension and IH/OH/k1/s1/p1 from push constants
+  - Reduced nested height/width loops to single length loop
+  - Updated index decomposition from `(nc, cur_oh, cur_ow)` to `(nc, cur_ol)`
+  - Changed scale from `k0*k1` to just `k0` for 1D average
+- Added pipeline creation, selection, supports_op in `ggml-vulkan.cpp`
+- Added `ggml_vk_pool_1d` dispatch function
+- Added element count case in workgroup sizing switch
+- Added POOL_1D case in compute operation dispatch
+- Added capture_node handling for graph validation
 
-[What you built this week, challenges faced, decisions made]
+**Challenges faced:**
+- Initially confused on how to remake equations from 2D to 1D
+- Confirmed op_params layout by checking `ggml_pool_1d` definition in `ggml/src/ggml.c` to match parameter order
 
-### Week [Y] Progress
-
-[Continue documenting as you work]
+**Decisions made:**
+- Followed pool2d as a direct template throughout to stay consistent with code
 
 ### Code Changes
 
-- **Files modified:** [List]
-- **Key commits:** [Links to important commits]
-- **Approach decisions:** [Why you chose certain approaches]
+- **Files modified:** ggml/src/ggml-vulkan/ggml-vulkan.cpp
+- **Files added:** ggml/src/ggml-vulkan/vulkan-shaders/pool1d.comp
+- **Key commits:**
+  - 3fab642: vulkan : add pool1d push constants and pipeline field
+  - 90328a5: vulkan : add pool1d compute shader
+  - 8d492b8: vulkan : add full GGML_OP_POOL_1D support
+- **Approach decisions:** I chose to follow the existing pool2d implementation as a direct template throughout to stay consistent with existing backend patterns and minimize risk of introducing new behavior.
 
 ---
 
