@@ -4,7 +4,7 @@
 **Student:** Anand Patil  
 **Issue:** [Feature Request: Implement missing ops from backends
  #14909](https://github.com/ggml-org/llama.cpp/issues/14909)  
-**Status:** Phase III Partially Complete
+**Status:** Phase III Complete
 
 ---
 
@@ -69,15 +69,12 @@ which showed all POOL_1D cases returning not supported [Vulkan0], confirming the
 - **Screenshots/logs:** Log of output showing test cases returning "not supported [Vulkan0]" on my Intel integrated GPU (full log available on request):
 ```
 $ build/bin/Release/test-backend-ops -o POOL_1D
-ggml_vulkan: Found 1 Vulkan devices:
-ggml_vulkan: 0 = Intel(R) Graphics (Intel Corporation) | uma: 1 | fp16: 1 | bf16: 0 | warp size: 32
 
 Backend 1/2: Vulkan0
   Device description: Intel(R) Graphics
 
   POOL_1D(pool_type=avg,type_input=f32,ne_input=[10,3,2,1],k0=1,s0=1,p0=0): not supported [Vulkan0]
   POOL_1D(pool_type=avg,type_input=f32,ne_input=[11,1,3,2],k0=1,s0=1,p0=0): not supported [Vulkan0]
-  POOL_1D(pool_type=avg,type_input=f32,ne_input=[128,2,1,3],k0=1,s0=1,p0=0): not supported [Vulkan0]
   ...
   POOL_1D(pool_type=max,type_input=f32,ne_input=[128,2,1,3],k0=3,s0=2,p0=1): not supported [Vulkan0]
 
@@ -131,18 +128,35 @@ Using UMPIRE framework (adapted):
 
 ### Unit Tests
 
-- [ ] Test case 1: avg pooling with kernel=2, stride=2, padding=0 on a simple F32 input tensor
-- [ ] Test case 2: max pooling with kernel=3, stride=1, padding=1 to verify boundary clamping
-- [ ] Test case 3: avg pooling with padding > 0 to verify padded regions do not affect the average
+- Test cases: Three input shapes { 10,3,2,1 }, { 11,1,3,2 }, { 128,2,1,3 } covering different length, channel, and batch combinations, each tested under:
+  - avg and max pooling with k0 = {1, 3}
+  - strides s0 = {1, 2}
+  - padding p0 = {0, 1}
 
 ### Integration Tests
 
-- [ ] Run test-backend-ops with `-b Vulkan -o POOL_1D` and confirm all cases match CPU reference output
-- [ ] Run llama-bench before and after to confirm no performance regression on existing ops
+- Run test-backend-ops for Pool1D on Vulkan backend
 
 ### Manual Testing
 
-In Progress. Will complete by next week.
+Ran `build/bin/Release/test-backend-ops -o POOL_1D` on Vulkan backend (Intel Graphics). Got 48/48 test cases passing. Here is the result log:
+```
+Testing 2 devices
+
+Backend 1/2: Vulkan0
+  Device description: Intel(R) Graphics
+
+  POOL_1D(pool_type=avg,type_input=f32,ne_input=[10,3,2,1],k0=1,s0=1,p0=0): OK
+  POOL_1D(pool_type=avg,type_input=f32,ne_input=[11,1,3,2],k0=1,s0=1,p0=0): OK
+  ...
+  POOL_1D(pool_type=max,type_input=f32,ne_input=[128,2,1,3],k0=3,s0=2,p0=1): OK
+  48/48 tests passed
+  Backend Vulkan0: OK
+Backend 2/2: CPU
+  Skipping CPU backend
+2/2 backends passed
+OK
+```
 
 ---
 
@@ -170,14 +184,32 @@ In Progress. Will complete by next week.
 **Decisions made:**
 - Followed pool2d as a direct template throughout to stay consistent with code
 
+### Week 4 Progress (June 24-30)
+
+**What I built:**
+- Fixed build error by registering `pool1d_f32` shader in `vulkan-shaders-gen.cpp`
+- Fixed wrong tensor dimension indices in element count switch and `ggml_vk_pool_1d`
+- Fixed `pool1d.comp` shader:
+  - Changed `bl`/`el` from `uint` to `int` to safely handle negative start values
+  - Changed avg pool scale to divide by actual valid elements in window instead of full kernel size
+- Ran `test-backend-ops -o POOL_1D` and passed 48/48 test cases on Vulkan backend
+
+**Challenges faced:**
+- Build failed with `pool1d_f32_len` and `pool1d_f32_data` undeclared. I traced it to missing field in `vulkan-shaders-gen.cpp`
+- Tests were failing with large errors and info mismatch. I traced it to typo in code and incorrect calculations
+
+**Decisions made:**
+- Cross-referenced outer batch layout requirements and CPU reference behavior to fix code issues
+
 ### Code Changes
 
-- **Files modified:** ggml/src/ggml-vulkan/ggml-vulkan.cpp
+- **Files modified:** ggml/src/ggml-vulkan/ggml-vulkan.cpp, ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp
 - **Files added:** ggml/src/ggml-vulkan/vulkan-shaders/pool1d.comp
 - **Key commits:**
-  - 3fab642: vulkan : add pool1d push constants and pipeline field
-  - 90328a5: vulkan : add pool1d compute shader
-  - 8d492b8: vulkan : add full GGML_OP_POOL_1D support
+  - 75a600d: vulkan : add pool1d push constants and pipeline field
+  - e2fe6a0: vulkan : add pool1d compute shader
+  - 9afd4e0: vulkan : add full GGML_OP_POOL_1D support
+  - 1e056c5: vulkan : fix pool1d shader logic
 - **Approach decisions:** I chose to follow the existing pool2d implementation as a direct template throughout to stay consistent with existing backend patterns and minimize risk of introducing new behavior.
 
 ---
