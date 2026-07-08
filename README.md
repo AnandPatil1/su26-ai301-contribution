@@ -4,7 +4,7 @@
 **Student:** Anand Patil  
 **Issue:** [Feature Request: Implement missing ops from backends
  #14909](https://github.com/ggml-org/llama.cpp/issues/14909)  
-**Status:** Phase III Complete
+**Status:** Phase IV Complete
 
 ---
 
@@ -216,15 +216,43 @@ OK
 
 ## Pull Request
 
-**PR Link:** [GitHub PR URL when submitted]
+**PR Link:** [vulkan: add POOL_1D op #25431](https://github.com/ggml-org/llama.cpp/pull/25431)
 
-**PR Description:** [Draft or final PR description - much of the content above can be adapted]
+**PR Description:** 
+
+> ## Overview
+> 
+> Add the POOL_1D operation for the Vulkan backend.
+> 
+> ## Additional information
+> 
+> Part of #14909
+> 
+> Tested on Intel(R) Graphics:
+> 
+> ```
+>   POOL_1D(pool_type=avg,type_input=f32,ne_input=[10,3,2,1],k0=1,s0=1,p0=0): OK
+>   POOL_1D(pool_type=avg,type_input=f32,ne_input=[11,1,3,2],k0=1,s0=1,p0=0): OK
+>   ...  
+>   POOL_1D(pool_type=max,type_input=f32,ne_input=[128,2,1,3],k0=3,s0=2,p0=1): OK
+>   48/48 tests passed
+>   Backend Vulkan0: OK
+> Backend 2/2: CPU
+>   Skipping CPU backend
+> 2/2 backends passed
+> OK
+> ```
+> 
+> ## Requirements
+> 
+> - [x] I have read and agree with the [contributing guidelines](https://github.com/ggml-org/llama.cpp/blob/master/CONTRIBUTING.md)
+> - AI usage disclosure: YES, I used AI to understand the codebase and to help debug issues I ran into (i.e. missing tensor dimension indices and an error in avg pool scale calculation). I reviewed and tested every change.
 
 **Maintainer Feedback:**
 - [Date]: [Summary of feedback received]
 - [Date]: [How you addressed it]
 
-**Status:** [Awaiting review / Iterating / Approved / Merged]
+**Status:** Awaiting review <!-- / Iterating / Approved / Merged -->
 
 ---
 
@@ -232,20 +260,21 @@ OK
 
 ### Technical Skills Gained
 
-[What you learned technically]
+- Deeper understanding of the Vulkan compute backend.
+- Learned how to utilize internal verification test suites.
 
 ### Challenges Overcome
 
-[What was hard and how you solved it]
+- Understanding the codebase was difficult, ao I utilized AI to help explain how existing implementations worked.
+- Reading through long compiler logs every time a build failed was time consuming, so I utilized AI to help quickly parse errors and identify the root cause.
 
 ### What I'd Do Differently Next Time
 
-[Reflection on your process]
+Next time I would map out all the files I need to work with before starting. One of my major roadblocks was missing an error that turned out to be in a separate file that I didn't realize was needed until the build failed. If I had scoped out the full set of files involved upfront, I would have spent less time navigating and debugging and could have worked through the implementation more efficiently.
 
 ---
 
 ## Resources Used
 
-- [Link to helpful documentation]
-- [Tutorial or Stack Overflow post that helped]
-- [GitHub issues or discussions that helped]
+- [llama.cpp Contributing Guidelines](https://github.com/ggml-org/llama.cpp/blob/master/CONTRIBUTING.md)
+- [llama.cpp Build Documentation](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md)
